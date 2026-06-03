@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env
+data/ratings_export*.csv
+data/ratings_export*.xlsx
