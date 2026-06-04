@@ -29,11 +29,9 @@ def load_meta():
     return load_metadata(METADATA_PATH)
 
 @st.cache_data(show_spinner=False)
-def build_sim_matrix(matrix_bytes: bytes):
+def build_sim_matrix(matrix_bytes: bytes, shape: tuple):
     """Cache the item similarity matrix keyed on the matrix contents."""
-    matrix = np.frombuffer(matrix_bytes, dtype=np.float64)
-    n_cols = int(np.sqrt(len(matrix)))
-    matrix = matrix.reshape(-1, n_cols)
+    matrix = np.frombuffer(matrix_bytes, dtype=np.float64).reshape(shape)
     return get_sim_matrix(matrix, cosineSim, dim=1)
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -132,7 +130,7 @@ matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
 
 # build similarity matrix (cached by matrix content)
 with st.spinner("Computing item similarities — this may take a moment…"):
-    sim_matrix = build_sim_matrix(matrix_num.tobytes())
+    sim_matrix = build_sim_matrix(matrix_num.tobytes(), matrix_num.shape)
 
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
