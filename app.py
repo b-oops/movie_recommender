@@ -133,7 +133,7 @@ centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0
 
 # build similarity matrix (cached by matrix content)
 with st.spinner("Computing item similarities — this may take a moment…"):
-    item_sim_matrix = build_sim_matrix(centered_num.tobytes(), centered_num.shape, cosineSim)
+    item_sim_matrix = build_sim_matrix(centered_num.tobytes(), centered_num.shape, 1)
 
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
