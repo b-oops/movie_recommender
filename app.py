@@ -127,7 +127,7 @@ if user_id not in df_matrix.index:
     st.stop()
 
 matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
-centered_num = np.nan_to_num(mean_centre(np.array(df_matrix)), nan=0.0)
+centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0)
 
 # build similarity matrix (cached by matrix content)
 with st.spinner("Computing item similarities — this may take a moment…"):
