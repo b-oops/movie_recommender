@@ -10,21 +10,28 @@ import math
 
 def pearsonSim(inA, inB):
     """Return Pearson similarity between two vectors, ignoring NaNs."""
-    # works for row or column vectors
     a = np.ravel(inA).astype(float)
     b = np.ravel(inB).astype(float)
 
-    # mask out missing values
     mask = ~np.isnan(a) & ~np.isnan(b)
+
     a = a[mask]
     b = b[mask]
 
-    # not enough overlap → neutral similarity
-    if a.size < 3:
+    ## pearson breaks if there are not enough points
+    if len(a) < 3:
         return 0.5
 
-    corr = np.corrcoef(a, b)[0, 1]
-    return 0.5 + 0.5 * corr
+    ## pearson breaks if there is no variance for a vector
+    if np.std(a) == 0 or np.std(b) == 0:
+        return 0.5
+
+    corr = np.corrcoef(a,b)[0,1]
+
+    # significance weighting
+    corr *= len(a)/(len(a)+10)
+
+    return 0.5 + 0.5*corr
 
 
 def cosineSim(inA, inB):
@@ -33,21 +40,25 @@ def cosineSim(inA, inB):
     a = np.ravel(inA).astype(float)
     b = np.ravel(inB).astype(float)
 
-    # mask out missing values
     mask = ~np.isnan(a) & ~np.isnan(b)
+
     a = a[mask]
     b = b[mask]
 
-    # no overlap → neutral similarity
-    if a.size == 0:
+    if len(a) < 3:
         return 0.5
 
-    denom = la.norm(a) * la.norm(b)
+
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+
     if denom == 0:
         return 0.5
 
-    cos = np.dot(a, b) / denom
-    return 0.5 + 0.5 * cos
+    # significance weighted
+    cos = np.dot(a,b)/denom
+    cos *= len(a)/(len(a)+10)
+
+    return 0.5 + 0.5*cos
 
 ########################### Estimate rating functions ##################################
 
@@ -105,23 +116,5 @@ def weighted_recommend(matrix, user, simMatrix, N=3, estMethod=standItemEst):
     return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[:N]
 
 
-# def user_based_recommend(dataMat, user, N=3, simMeas=pearsonSim, estMethod=standUserEst):
-#     unratedItems = np.nonzero(dataMat[user,:]==0)[0] #find unrated items 
-#     if len(unratedItems) == 0: return 'you rated everything'
-#     itemScores = []
-#     for item in unratedItems:
-#         estimatedScore = estMethod(dataMat, user, simMeas, item)
-#         itemScores.append((item, estimatedScore))
-#     return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[:N]
 
-def simple_recommend(df: pd.DataFrame, unrated: set, n: int) -> pd.DataFrame:
-    """
-    Simply returns the n top unrated films based on the user ratings matrix.
-    """
-    means = df.mean(axis=0)                       # get mean ratings
-    print(type(means))
-    means = means[means.index.isin(unrated)]          # filter out user rated movies
-    top = means.nlargest(n)                       # get sorted df
-
-    return top
 

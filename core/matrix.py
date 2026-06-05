@@ -75,25 +75,6 @@ def get_unrated_movies(df: pd.DataFrame, user_id: str) -> list:
     row = get_user_vector(df, user_id)
     return list(row.index[row.isna()])
 
-# def get_sim_matrix(matrix, simMeas, dim):
-#     """Precomputes a symmetric similarity matrix for 1. all users and 2. all items based on given similarity measure."""
-#     if(dim == 0):
-#         matrix = matrix.T
-
-#     item_count = np.shape(matrix)[1]
-
-#     simMatrix = np.zeros((item_count,item_count), dtype=float)
-#     for i in range(item_count):
-#         for j in range(item_count):
-#             similarity = 0
-#             overLap = np.nonzero(np.logical_and(matrix[:,i]>0, matrix[:,j]>0))[0]
-#             if len(overLap) == 0: 
-#                 similarity = 0
-#             else: 
-#                 similarity = simMeas(matrix[overLap,i], matrix[overLap,j])
-#             simMatrix[i,j] = similarity
-
-#     return simMatrix
 
 def get_sim_matrix(matrix, simMeas, dim=1):
     """Compute a symmetric similarity matrix for users or items."""
@@ -111,14 +92,7 @@ def get_sim_matrix(matrix, simMeas, dim=1):
         simMatrix[i, i] = 1.0  # self-similarity
         for j in range(i + 1, n):
             # Mask out missing values (0 = missing in baseline)
-            a = mat[i]
-            b = mat[j]
-            mask = (a != 0) & (b != 0)
-
-            if not np.any(mask):
-                sim = 0.5  # neutral similarity
-            else:
-                sim = simMeas(a[mask], b[mask])
+            sim = simMeas(mat[i], mat[j])
 
             simMatrix[i, j] = sim
             simMatrix[j, i] = sim  # symmetry
