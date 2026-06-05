@@ -29,10 +29,12 @@ def load_meta():
     return load_metadata(METADATA_PATH)
 
 @st.cache_data(show_spinner=False)
-def build_sim_matrix(matrix_bytes: bytes, shape: tuple, simMeas):
+def build_sim_matrix(matrix_bytes: bytes, shape: tuple, dim: int):
     """Cache the item similarity matrix keyed on the matrix contents."""
     matrix = np.frombuffer(matrix_bytes, dtype=np.float64).reshape(shape)
-    return get_sim_matrix(matrix, simMeas, dim=1)
+    #if dim == 0:
+    #    return get_sim_matrix(matrix, pearsonSim, dim=dim)
+    return get_sim_matrix(matrix, cosineSim, dim=dim)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
