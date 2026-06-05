@@ -6,7 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from core.loader import load_user_ratings, load_community_ratings, summarize_movies, load_metadata
-from core.matrix import build_user_item_df, get_sim_matrix, get_rated_movies, get_unrated_movies
+from core.matrix import build_user_item_df, get_sim_matrix, get_rated_movies, get_unrated_movies, mean_centre
 from core.recommender import cosineSim, standItemEst, weighted_recommend
 
 # ── page config ────────────────────────────────────────────────────────────
@@ -29,10 +29,10 @@ def load_meta():
     return load_metadata(METADATA_PATH)
 
 @st.cache_data(show_spinner=False)
-def build_sim_matrix(matrix_bytes: bytes, shape: tuple):
+def build_sim_matrix(matrix_bytes: bytes, shape: tuple, simMeas):
     """Cache the item similarity matrix keyed on the matrix contents."""
     matrix = np.frombuffer(matrix_bytes, dtype=np.float64).reshape(shape)
-    return get_sim_matrix(matrix, cosineSim, dim=1)
+    return get_sim_matrix(matrix, simMeas, dim=1)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
@@ -69,7 +69,7 @@ def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
 
 # ── UI ─────────────────────────────────────────────────────────────────────
 st.title("🎬 Movie Recommender")
-st.caption("Upload your Letterboxd ratings export and get personalised picks from our community of film lovers.")
+st.caption("Upload your Letterboxd ratings export and get personalised picks from top letterboxd critics.")
 
 # sidebar
 with st.sidebar:
@@ -111,7 +111,7 @@ col2.metric("Avg rating", f"{avg_rating:.2f} ★")
 col3.metric("Unmatched", unmatched)
 
 if unmatched > 0:
-    st.caption(f"{unmatched} ratings couldn't be matched — likely newer films not yet in the community dataset.")
+    st.caption(f"{unmatched} ratings couldn't be matched — likely newer films not yet in the community dataset. (we only have data up to 2023)")
 
 st.divider()
 
@@ -127,10 +127,11 @@ if user_id not in df_matrix.index:
     st.stop()
 
 matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
+centered_num = np.nan_to_num(mean_centre(np.array(df_matrix)), nan=0.0)
 
 # build similarity matrix (cached by matrix content)
 with st.spinner("Computing item similarities — this may take a moment…"):
-    sim_matrix = build_sim_matrix(matrix_num.tobytes(), matrix_num.shape)
+    item_sim_matrix = build_sim_matrix(centered_num.tobytes(), centered_num.shape, cosineSim)
 
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
@@ -140,7 +141,7 @@ with st.spinner("Generating recommendations…"):
     raw_recs = weighted_recommend(
         matrix    = matrix_num,
         user      = my_user_index,
-        simMatrix = sim_matrix,
+        simMatrix = item_sim_matrix,
         N         = top_n,
         estMethod = standItemEst,
     )
@@ -177,7 +178,7 @@ min_score = min(r["score"] for r in results)
 score_range = max_score - min_score if max_score != min_score else 1
 
 for i, rec in enumerate(results, 1):
-    pct = (rec["score"] - min_score) / score_range
+    pct = (((rec["score"] - min_score) / score_range) / 5) + .8  ## shifted to be between 80% and 100% matches
 
     with st.container(border=True):
         left, right = st.columns([6, 1])
