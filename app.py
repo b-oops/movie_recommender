@@ -34,7 +34,7 @@ def build_sim_matrix(matrix_bytes: bytes, shape: tuple, dim: int):
     matrix = np.frombuffer(matrix_bytes, dtype=np.float64).reshape(shape)
     #if dim == 0:
     #    return get_sim_matrix(matrix, pearsonSim, dim=dim)
-    return get_sim_matrix(matrix, cosineSim, dim=dim)
+    return get_sim_matrix(matrix, cosineSim, dim=1)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
