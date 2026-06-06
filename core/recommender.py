@@ -123,6 +123,9 @@ def kNearestItemEst_topn(matrix, user, topn, item, k=30):
     neighbors.sort(key=lambda x: x[0], reverse=True)
     neighbors = neighbors[:k]
 
+    if len(neighbors) < 5: # need at least 5 neighbors to feel good about predicting with them
+        return 5 # neutral 
+
     simTotal = sum(sim for sim, _, _ in neighbors)
     if simTotal == 0:
         return 0
