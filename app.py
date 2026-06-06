@@ -5,15 +5,17 @@ import sys, os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from core.loader import load_user_ratings, load_community_ratings, summarize_movies, load_metadata
-from core.matrix import build_user_item_df, get_sim_matrix, get_rated_movies, get_unrated_movies, mean_centre
-from core.recommender import cosineSim, standItemEst, weighted_recommend
+from core.loader import load_metadata
+from core.matrix import build_user_item_df, mean_centre
+from core.recommender import standItemEst, weighted_recommend
 
 # ── page config ────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="centered")
 
 DATA_DIR        = os.path.join(os.path.dirname(__file__), "data")
 COMMUNITY_PATH  = os.path.join(DATA_DIR, "ratings_filtered.csv")
+ITEM_SIM_PATH     = os.path.join(DATA_DIR, "item_sims_preFilter_under50MB.csv")    # precomputed item sims
+USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims_preFilter_under50MB.csv.csv")    # precomputed item sims
 METADATA_PATH   = os.path.join(DATA_DIR, "movie_data_filtered.csv")
 
 # ── cached data loaders ────────────────────────────────────────────────────
@@ -29,12 +31,10 @@ def load_meta():
     return load_metadata(METADATA_PATH)
 
 @st.cache_data(show_spinner=False)
-def build_sim_matrix(matrix_bytes: bytes, shape: tuple, dim: int):
-    """Cache the item similarity matrix keyed on the matrix contents."""
-    matrix = np.frombuffer(matrix_bytes, dtype=np.float64).reshape(shape)
-    #if dim == 0:
-    #    return get_sim_matrix(matrix, pearsonSim, dim=dim)
-    return get_sim_matrix(matrix, cosineSim, dim=1)
+def load_item_sim():
+    """Load precomputed item similarity matrix. Returns (np.ndarray, list of movie_ids)."""
+    df = pd.read_csv(ITEM_SIM_PATH, index_col=0)
+    return df.to_numpy(dtype=np.float64), list(df.columns)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
@@ -132,8 +132,8 @@ matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
 centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0)
 
 # build similarity matrix (cached by matrix content)
-with st.spinner("Computing item similarities — this may take a moment…"):
-    item_sim_matrix = build_sim_matrix(centered_num.tobytes(), centered_num.shape, 1)
+with st.spinner("Loading item similarities…"):
+    item_sim_matrix, sim_movie_ids = load_item_sim()
 
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
