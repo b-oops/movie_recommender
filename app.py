@@ -15,7 +15,7 @@ st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="cen
 DATA_DIR        = os.path.join(os.path.dirname(__file__), "data")
 COMMUNITY_PATH  = os.path.join(DATA_DIR, "ratings_filtered.csv")
 ITEM_SIM_PATH     = os.path.join(DATA_DIR, "item_topn.csv")    # precomputed item sims
-USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims_preFilter_under50MB.csv.csv")    # precomputed item sims
+USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims.csv.csv")    # precomputed item sims
 METADATA_PATH   = os.path.join(DATA_DIR, "movie_data_filtered.csv")
 
 # ── cached data loaders ────────────────────────────────────────────────────
