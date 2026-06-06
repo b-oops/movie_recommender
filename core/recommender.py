@@ -103,6 +103,33 @@ def standUserEst(matrix, user, simMatrix, item):
     if simTotal == 0: return 0
     else: return ratSimTotal/simTotal
 
+def kNearestItemEst_topn(matrix, user, topn, item, k=30):
+    """
+    Predict rating using only the precomputed Top-N neighbors for each item.
+    """
+    neighbors = []
+
+    for i, similarity in topn[item]:
+        userRating = matrix[user, i]
+        if userRating == 0 or np.isnan(userRating):
+            continue
+
+        neighbors.append((similarity, userRating, i))
+
+    if not neighbors:
+        return 0
+
+    # Sort and keep top-k
+    neighbors.sort(key=lambda x: x[0], reverse=True)
+    neighbors = neighbors[:k]
+
+    simTotal = sum(sim for sim, _, _ in neighbors)
+    if simTotal == 0:
+        return 0
+
+    ratSimTotal = sum(sim * rating for sim, rating, _ in neighbors)
+    return ratSimTotal / simTotal
+
 ############################## recommend functions #####################################
 
 def weighted_recommend(matrix, user, simMatrix, N=3, estMethod=standItemEst):

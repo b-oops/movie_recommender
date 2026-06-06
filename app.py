@@ -7,14 +7,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from core.loader import load_metadata
 from core.matrix import build_user_item_df, mean_centre
-from core.recommender import standItemEst, weighted_recommend
+from core.recommender import kNearestItemEst_topn, weighted_recommend
 
 # ── page config ────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="centered")
 
 DATA_DIR        = os.path.join(os.path.dirname(__file__), "data")
 COMMUNITY_PATH  = os.path.join(DATA_DIR, "ratings_filtered.csv")
-ITEM_SIM_PATH     = os.path.join(DATA_DIR, "item_sims_preFilter_under50MB.csv")    # precomputed item sims
+ITEM_SIM_PATH     = os.path.join(DATA_DIR, "item_topn.csv")    # precomputed item sims
 USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims_preFilter_under50MB.csv.csv")    # precomputed item sims
 METADATA_PATH   = os.path.join(DATA_DIR, "movie_data_filtered.csv")
 
@@ -31,10 +31,12 @@ def load_meta():
     return load_metadata(METADATA_PATH)
 
 @st.cache_data(show_spinner=False)
-def load_item_sim():
-    """Load precomputed item similarity matrix. Returns (np.ndarray, list of movie_ids)."""
-    df = pd.read_csv(ITEM_SIM_PATH, index_col=0)
-    return df.to_numpy(dtype=np.float64), list(df.columns)
+def load_item_topn() -> dict:
+    """Load item_topn.json. Returns dict of {item_index: [[neighbor_index, sim], ...]}."""
+    import json
+    with open(ITEM_SIM_PATH) as f:
+        raw = json.load(f)
+    return {int(k): v for k, v in raw.items()}
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def parse_uploaded_ratings(uploaded_file, known_ids: set) -> pd.DataFrame:
@@ -131,9 +133,9 @@ if user_id not in df_matrix.index:
 matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
 centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0)
 
-# build similarity matrix (cached by matrix content)
+# load precomputed item top-N neighbours
 with st.spinner("Loading item similarities…"):
-    item_sim_matrix, sim_movie_ids = load_item_sim()
+    item_topn = load_item_topn()
 
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
@@ -143,9 +145,9 @@ with st.spinner("Generating recommendations…"):
     raw_recs = weighted_recommend(
         matrix    = matrix_num,
         user      = my_user_index,
-        simMatrix = item_sim_matrix,
+        simMatrix = item_topn,
         N         = top_n,
-        estMethod = standItemEst,
+        estMethod = kNearestItemEst_topn,
     )
 
 if isinstance(raw_recs, str):
