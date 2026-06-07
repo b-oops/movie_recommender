@@ -157,18 +157,18 @@ with st.spinner("Computing your user similarities…"):
     from core.recommender import cosineSim
 
     # community rows only (exclude the new user at my_user_index)
-    community_matrix = matrix_num[:my_user_index]        # all rows except last
+    n = community_sim.shape[0]
+    community_matrix = matrix_num[:n]        # all rows except last
     new_user_vec     = matrix_num[my_user_index]         # new user row
 
     # compute similarity between new user and each community user
     new_user_sims = np.array([
         cosineSim(new_user_vec, community_matrix[u])
-        for u in range(len(community_matrix))
+        for u in range(n)
     ])
 
     # extend community sim matrix: add new row and column for the new user
-    n = community_sim.shape[0]
-    user_sim_matrix = np.ones((n + 1, n + 1), dtype=np.float64) * 0.5
+    user_sim_matrix = np.full((n + 1, n + 1), 0.5, dtype=np.float64)
     user_sim_matrix[:n, :n] = community_sim              # community sims unchanged
     user_sim_matrix[n, :n]  = new_user_sims              # new user → community
     user_sim_matrix[:n, n]  = new_user_sims              # community → new user (symmetric)
