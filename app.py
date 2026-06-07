@@ -212,6 +212,7 @@ for movie_id, score in zip(rec_movie_ids, rec_scores):
         "year":        int(row["year_released"]) if row is not None and pd.notna(row["year_released"]) else None,
         "genres":      row["genres"] if row is not None else "",
         "overview":    row["overview"] if row is not None else "",
+        "runtime":     int(row["runtime"]) if row is not None and pd.notna(row["runtime"]) else None,
         "score":       score,
     })
 
