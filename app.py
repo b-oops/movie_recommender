@@ -229,7 +229,8 @@ for i, rec in enumerate(results, 1):
         left, right = st.columns([6, 1])
         with left:
             year_str = f" ({rec['year']})" if rec["year"] else ""
-            st.markdown(f"**{i}. {rec['title']}**{year_str}")
+            runtime_str = f" · {rec['runtime']} min" if rec["runtime"] else ""
+            st.markdown(f"**{i}. {rec['title']}**{year_str}{runtime_str}")
             if rec["genres"]:
                 try:
                     import ast
@@ -240,4 +241,4 @@ for i, rec in enumerate(results, 1):
             if rec["overview"]:
                 st.caption(rec["overview"][:200] + ("…" if len(rec["overview"]) > 200 else ""))
         with right:
-            st.metric("Match", f"{pct:.1%}")
+            st.metric("Match", f"{pct:.0%}")
