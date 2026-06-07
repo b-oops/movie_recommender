@@ -62,27 +62,6 @@ def cosineSim(inA, inB):
 
 ########################### Estimate rating functions ##################################
 
-def standItemEst(matrix, user, simMatrix, item):
-    """Returns a predicted rating from user (u) on item (i) based on user's average rating on other films (weighted by film similarity)"""
-    # dataMat is assumed to be 2d Numpy array, e.g., representing a user-item rating matrix
-    # user is the index of a single user (a row) in the dataMat
-    # item is the index of a single item (a colums) in the dataMat
-    
-    n = np.shape(matrix)[1]
-    simTotal = 0.0; ratSimTotal = 0.0
-    for i in range(n):
-        userRating = matrix[user,i]
-        if userRating == 0 or math.isnan(userRating): 
-            continue
-        else: 
-            similarity = simMatrix[item, i]
-        #print('the %d and %d similarity is: %f' % (item, j, similarity))
-        simTotal += similarity
-        ratSimTotal += similarity * userRating
-
-    if simTotal == 0: return 0
-    else: return ratSimTotal/simTotal
-
 def standUserEst(matrix, user, simMatrix, item): 
     """Returns a predicted rating from user (u) on item (i) based on other users' average rating on that films (weighted by user similarity)"""
     # dataMat is assumed to be 2d Numpy array, e.g., representing a user-item rating matrix
@@ -103,46 +82,102 @@ def standUserEst(matrix, user, simMatrix, item):
     if simTotal == 0: return 0
     else: return ratSimTotal/simTotal
 
-def kNearestItemEst_topn(matrix, user, topn, item, k=30):
-    """
-    Predict rating using only the precomputed Top-N neighbors for each item.
-    """
+def kNearestItemEst_topn(matrix, user, simMatrix, item, k=20, verbose=False, user_labels=None, movie_labels=None):
+    """Returns a predicted rating from user (u) on item (i) based on user's average rating on k most similar films (weighted by film similarity)"""
     neighbors = []
+    row = matrix[user]
+    rated = row[row != 0]
+    user_mean = rated.mean()
 
-    for i, similarity in topn[item]:
+    for i, similarity in simMatrix[item]:
         userRating = matrix[user, i]
         if userRating == 0 or np.isnan(userRating):
             continue
-
         neighbors.append((similarity, userRating, i))
 
-    if not neighbors:
-        return 0
+        if verbose:
+            print(f"User: {user_labels[user]}, item: {movie_labels[i]}, "
+                  f"sim: {similarity}, rating: {userRating}")
 
-    # Sort and keep top-k
+    if not neighbors:
+        return user_mean
+
     neighbors.sort(key=lambda x: x[0], reverse=True)
     neighbors = neighbors[:k]
 
-    if len(neighbors) < 5: # need at least 5 neighbors to feel good about predicting with them
-        return 5 # neutral 
+    if len(neighbors) < 5:
+        return user_mean
 
     simTotal = sum(sim for sim, _, _ in neighbors)
     if simTotal == 0:
-        return 0
+        return user_mean
 
     ratSimTotal = sum(sim * rating for sim, rating, _ in neighbors)
     return ratSimTotal / simTotal
 
+def kNearestUserEst(matrix, user, simMatrix, item, k=20, min_sim=0.3, verbose: bool=False, user_labels=None, movie_labels=None): 
+    """Returns a predicted rating from user (u) on item (i) based on k most similar other users' average rating on that film (weighted by user similarity)"""
+    # dataMat is assumed to be 2d Numpy array, e.g., representing a user-item rating matrix
+    # user is the index of a single user (a row) in the dataMat
+    # item is the index of a single item (a colums) in the dataMat
+    
+    n = np.shape(matrix)[0]
+    simTotal = 0.0; ratSimTotal = 0.0
+
+    neighbors = []
+    for u in range(n):
+        userRating = matrix[u,item]
+        if u == user:
+            continue
+        if userRating == 0 or np.isnan(userRating):
+            continue
+        similarity = simMatrix[user, u]
+        if similarity > min_sim:
+            if verbose:
+                print(f"User: {user_labels[u]}, item: {movie_labels[item]}, user_sim: {similarity}, rating: {userRating}")
+            neighbors.append((similarity, userRating))
+
+    if not neighbors:
+        return 0
+    
+    # keep only top-k most similar items
+    neighbors.sort(key=lambda x: x[0], reverse=True)
+    neighbors = neighbors[:k]
+
+    simTotal = sum(sim for sim, _ in neighbors)
+
+    if simTotal == 0: 
+        return 0
+
+    ratSimTotal = sum(sim * rating for sim, rating in neighbors)
+
+    return ratSimTotal/simTotal
+
 ############################## recommend functions #####################################
 
-def weighted_recommend(matrix, user, simMatrix, N=3, estMethod=standItemEst):
-    """Returns n top recommendations for user based on the estimation method and helper similarity matrix provided"""
-    unratedItems = np.nonzero(matrix[user,:]==0)[0] #find unrated items 
-    if len(unratedItems) == 0: return 'you rated everything'
+def weighted_recommend(matrix, user, simMatrix, estMethod, N=3, ratio=.5, simMatrix2=None, estMethod2=None, rewatch=False):
+    """Returns n top recommendations for user based on the estimation method(s) and helper similarity matrix(es) specified"""
+    
+    ## what movies are we picking from?
+    itemsToRate = np.nonzero(matrix[user,:]==0)[0] #find unrated items 
+    if rewatch:
+        itemsToRate = np.nonzero(matrix[user,:]>0)[0]
+        if len(itemsToRate) == 0: return "you haven't rated anything"
+    else:
+        itemsToRate = np.nonzero(matrix[user,:]==0)[0] #find unrated items 
+        if len(itemsToRate) == 0: return 'you rated everything: try a rewatch!'
+
+    ## which movies should we pick?
     itemScores = []
-    for item in unratedItems:
+    for item in itemsToRate:
+        ## just one estimator provided
         estimatedScore = estMethod(matrix, user, simMatrix, item)
+        ## two estimation methods and a ratio to split them
+        if simMatrix2 is not None:
+            estimatedScore2 = estMethod2(matrix, user, simMatrix2, item)
+            estimatedScore = estimatedScore*(ratio) + estimatedScore2*(1-ratio)
         itemScores.append((item, estimatedScore))
+        
     return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[:N]
 
 

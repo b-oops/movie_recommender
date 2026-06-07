@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from core.loader import load_metadata
 from core.matrix import build_user_item_df, mean_centre
-from core.recommender import kNearestItemEst_topn, weighted_recommend
+from core.recommender import kNearestItemEst_topn, kNearestUserEst, weighted_recommend
 
 # ── page config ────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="centered")
@@ -15,7 +15,7 @@ st.set_page_config(page_title="Movie Recommender", page_icon="🎬", layout="cen
 DATA_DIR        = os.path.join(os.path.dirname(__file__), "data")
 COMMUNITY_PATH  = os.path.join(DATA_DIR, "ratings_filtered.csv")
 ITEM_SIM_PATH     = os.path.join(DATA_DIR, "item_topn.json")    # precomputed item sims
-USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims.csv.csv")    # precomputed item sims
+USER_SIM_PATH     = os.path.join(DATA_DIR, "user_sims.csv")    # precomputed item sims
 METADATA_PATH   = os.path.join(DATA_DIR, "movie_data_filtered.csv")
 
 # ── cached data loaders ────────────────────────────────────────────────────
@@ -29,6 +29,12 @@ def load_community():
 @st.cache_data(show_spinner=False)
 def load_meta():
     return load_metadata(METADATA_PATH)
+
+@st.cache_data(show_spinner=False)
+def load_user_sim():
+    """Load precomputed community user similarity matrix."""
+    df = pd.read_csv(USER_SIM_PATH, index_col=0)
+    return df.to_numpy(dtype=np.float64)
 
 @st.cache_data(show_spinner=False)
 def load_item_topn() -> dict:
@@ -78,7 +84,10 @@ st.caption("Upload your Letterboxd ratings export and get personalised picks fro
 # sidebar
 with st.sidebar:
     st.header("Settings")
-    top_n = st.slider("Number of recommendations", 3, 25, 10)
+    top_n   = st.slider("Number of recommendations", 3, 25, 10)
+    ratio   = st.slider("Item ← ratio → User similarity", 0.0, 1.0, 0.5, step=0.05)
+    rewatch = st.toggle("Rewatch mode", value=False)
+    run     = st.button("Get recommendations", type="primary", use_container_width=True)
     st.markdown("---")
     st.markdown(
         "Export your ratings from **Letterboxd → Settings → Import & Export → Export Your Data**. "
@@ -119,6 +128,10 @@ if unmatched > 0:
 
 st.divider()
 
+if not run:
+    st.info("👈 Adjust settings and hit **Get recommendations** to generate your picks.")
+    st.stop()
+
 # build matrix
 with st.spinner("Building user-item matrix…"):
     combined = pd.concat([community_df, user_df], ignore_index=True)
@@ -137,17 +150,45 @@ centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0
 with st.spinner("Loading item similarities…"):
     item_topn = load_item_topn()
 
+# load precomputed community user sim matrix and extend with new user's similarities
+my_user_index = df_matrix.index.get_loc(user_id)
+with st.spinner("Computing your user similarities…"):
+    community_sim = load_user_sim()                      # (938 × 938)
+    from core.recommender import cosineSim
+
+    # community rows only (exclude the new user at my_user_index)
+    community_matrix = matrix_num[:my_user_index]        # all rows except last
+    new_user_vec     = matrix_num[my_user_index]         # new user row
+
+    # compute similarity between new user and each community user
+    new_user_sims = np.array([
+        cosineSim(new_user_vec, community_matrix[u])
+        for u in range(len(community_matrix))
+    ])
+
+    # extend community sim matrix: add new row and column for the new user
+    n = community_sim.shape[0]
+    user_sim_matrix = np.ones((n + 1, n + 1), dtype=np.float64) * 0.5
+    user_sim_matrix[:n, :n] = community_sim              # community sims unchanged
+    user_sim_matrix[n, :n]  = new_user_sims              # new user → community
+    user_sim_matrix[:n, n]  = new_user_sims              # community → new user (symmetric)
+    np.fill_diagonal(user_sim_matrix, 1.0)
+
 # run recommender
 my_user_index = df_matrix.index.get_loc(user_id)
 unrated_mask  = matrix_num[my_user_index] == 0
 
 with st.spinner("Generating recommendations…"):
     raw_recs = weighted_recommend(
-        matrix    = matrix_num,
-        user      = my_user_index,
-        simMatrix = item_topn,
-        N         = top_n,
-        estMethod = kNearestItemEst_topn,
+        matrix     = matrix_num,
+        user       = my_user_index,
+        simMatrix  = item_topn,
+        N          = top_n,
+        ratio      = ratio,
+        rewatch    = rewatch,
+        estMethod  = kNearestItemEst_topn,
+        simMatrix2 = user_sim_matrix,
+        estMethod2 = kNearestUserEst,
     )
 
 if isinstance(raw_recs, str):
@@ -199,4 +240,4 @@ for i, rec in enumerate(results, 1):
             if rec["overview"]:
                 st.caption(rec["overview"][:200] + ("…" if len(rec["overview"]) > 200 else ""))
         with right:
-            st.metric("Match", f"{pct:.0%}")
+            st.metric("Match", f"{pct:.1%}")
