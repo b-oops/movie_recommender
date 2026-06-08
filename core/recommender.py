@@ -82,7 +82,7 @@ def standUserEst(matrix, user, simMatrix, item):
     if simTotal == 0: return 0
     else: return ratSimTotal/simTotal
 
-def kNearestItemEst_topn(matrix, user, simMatrix, item, k=20, verbose=False, user_labels=None, movie_labels=None):
+def kNearestItemEst_topn(matrix, user, simMatrix, item, k=10, verbose=False, user_labels=None, movie_labels=None):
     """Returns a predicted rating from user (u) on item (i) based on user's average rating on k most similar films (weighted by film similarity)"""
     neighbors = []
     row = matrix[user]
@@ -177,7 +177,7 @@ def weighted_recommend(matrix, user, simMatrix, estMethod, N=3, ratio=.5, simMat
             estimatedScore2 = estMethod2(matrix, user, simMatrix2, item)
             estimatedScore = estimatedScore*(ratio) + estimatedScore2*(1-ratio)
         itemScores.append((item, estimatedScore))
-        
+
     return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[:N]
 
 

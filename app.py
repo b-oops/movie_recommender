@@ -91,7 +91,8 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         "Export your ratings from **Letterboxd → Settings → Import & Export → Export Your Data**. "
-        "Upload the `ratings.csv` file."
+        "Upload the `ratings.csv` file. [Open Letterboxd ↗](https://letterboxd.com)"
+        "Letterboxd is free to use and the best thing in the world. Don't be scared."
     )
 
 # file upload
@@ -213,6 +214,7 @@ for movie_id, score in zip(rec_movie_ids, rec_scores):
         "genres":      row["genres"] if row is not None else "",
         "overview":    row["overview"] if row is not None else "",
         "runtime":     int(row["runtime"]) if row is not None and pd.notna(row["runtime"]) else None,
+        "tmdb_link":   row["tmdb_link"] if row is not None and pd.notna(row["tmdb_link"]) else None,
         "score":       score,
     })
 
@@ -231,7 +233,8 @@ for i, rec in enumerate(results, 1):
         with left:
             year_str = f" ({rec['year']})" if rec["year"] else ""
             runtime_str = f" · {rec['runtime']} min" if rec["runtime"] else ""
-            st.markdown(f"**{i}. {rec['title']}**{year_str}{runtime_str}")
+            title_md = f"[{rec['title']}]({rec['tmdb_link']})" if rec["tmdb_link"] else rec["title"]
+            st.markdown(f"**{i}. {title_md}**{year_str}{runtime_str}")
             if rec["genres"]:
                 try:
                     import ast
