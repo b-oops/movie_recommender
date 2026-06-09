@@ -33,7 +33,7 @@ def load_meta():
 @st.cache_data(show_spinner=False)
 def load_user_sim():
     """Load precomputed community user similarity matrix."""
-    df = pd.read_csv(USER_SIM_PATH, index_col=0)
+    df = pd.read_csv(USER_SIM_PATH, index_col=None, header=None)
     return df.to_numpy(dtype=np.float64)
 
 @st.cache_data(show_spinner=False)
@@ -91,7 +91,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         "Export your ratings from **Letterboxd → Settings → Import & Export → Export Your Data**. "
-        "Upload the `ratings.csv` file. [Open Letterboxd ↗](https://letterboxd.com)"
+        "Upload the `ratings.csv` file. [Open Letterboxd ↗](https://letterboxd.com) "
         "Letterboxd is free to use and the best thing in the world. Don't be scared."
     )
 
@@ -159,7 +159,8 @@ with st.spinner("Computing your user similarities…"):
 
     # community rows only (exclude the new user at my_user_index)
     n = community_sim.shape[0]
-    community_matrix = matrix_num[:n]        # all rows except last
+    community_matrix = np.delete(matrix_num, my_user_index, axis=0)
+    #community_matrix = matrix_num[:n]        # all rows except last
     new_user_vec     = matrix_num[my_user_index]         # new user row
 
     # compute similarity between new user and each community user

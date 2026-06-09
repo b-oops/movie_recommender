@@ -2,7 +2,7 @@ import re
 import pandas as pd
 from core.filters import generate_movie_filter
 
-MY_USER_ID = "b_oops"
+MY_USER_ID = "me"
 MOVIE_METADATA_PATH = ""
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def load_user_ratings(filepath: str, known_ids: set) -> pd.DataFrame:
         )
 
     df = df[matched].copy()
-    df["user_id"] = "b_oops"
+    df["user_id"] = MY_USER_ID
     df["rating"] = df["Rating"] * 2          # 0.5–5 → 1–10
 
     return df[["user_id", "movie_id", "rating"]]
