@@ -144,6 +144,14 @@ if user_id not in df_matrix.index:
     st.error("Something went wrong adding your ratings to the matrix.")
     st.stop()
 
+# move user to bottom of df
+my_user_index = df_matrix.index.get_loc(user_id)
+row = df_matrix.iloc[[my_user_index]]
+df_matrix = pd.concat(
+    [df_matrix.drop(df_matrix.index[my_user_index]), row],
+    axis=0
+)
+
 matrix_num = np.nan_to_num(np.array(df_matrix), nan=0.0)
 centered_num = np.nan_to_num(np.array(mean_centre(np.array(df_matrix))), nan=0.0)
 
