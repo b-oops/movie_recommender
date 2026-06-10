@@ -85,7 +85,7 @@ st.caption("Upload your Letterboxd ratings export and get personalised picks fro
 with st.sidebar:
     st.header("Settings")
     top_n   = st.slider("Number of recommendations", 3, 25, 10)
-    ratio   = st.slider("Movies from SIMILAR users ← ratio → movies based on YOUR picks", 0.0, 1.0, 0.5, step=0.05)
+    ratio   = st.slider("Based on OTHER users' favorites ← ratio → based on YOUR favorites", 0.0, 1.0, 0.5, step=0.05)
     rewatch = st.toggle("Rewatch mode", value=False)
     run     = st.button("Get recommendations", type="primary", use_container_width=True)
     st.markdown("---")
