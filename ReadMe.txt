@@ -2,7 +2,7 @@
 
 A personalised movie recommendation app built on collaborative filtering. Upload your [Letterboxd](https://letterboxd.com) ratings export and get picks drawn from a curated community of film critics — covering films up to 2023.
 
-Live at: [your Streamlit Cloud URL here]
+Live at: https://movierecommender-b-oops.streamlit.app/
 
 ---
 
